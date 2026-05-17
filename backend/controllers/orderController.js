@@ -4,6 +4,7 @@ import {
   createOrderForUser,
   findOrderForUser,
   findOrdersForUser,
+  markOrderAsPaid,
 } from '../services/orderService.js';
 
 // @desc    Create new order
@@ -38,4 +39,16 @@ export const getOrderById = asyncHandler(async (req, res) => {
 export const getMyOrders = asyncHandler(async (req, res) => {
   const orders = await findOrdersForUser(req.user._id);
   success(res, orders);
+});
+
+// @desc    Update order to paid
+// @route   PUT /api/orders/:id/pay
+// @access  Private
+export const updateOrderToPaid = asyncHandler(async (req, res) => {
+  const updatedOrder = await markOrderAsPaid({
+    orderId: req.params.id,
+    paymentResult: req.body,
+  });
+
+  success(res, updatedOrder);
 });

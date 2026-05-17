@@ -7,6 +7,7 @@ import productRoutes from './routes/productRoutes.js';
 import cartRoutes from './routes/cartRoutes.js';
 import orderRoutes from './routes/orderRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
+import paymentRoutes from './routes/paymentRoutes.js';
 import errorHandler from './middlewares/errorHandler.js';
 
 const app = express();
@@ -23,6 +24,7 @@ app.use('/api/products', productRoutes);
 app.use('/api/cart', cartRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/uploads', uploadRoutes);
+app.use('/api/payment', paymentRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

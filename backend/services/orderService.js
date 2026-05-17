@@ -4,8 +4,8 @@ import Order from '../models/Order.js';
 import Product from '../models/Product.js';
 import HttpError from '../utils/httpError.js';
 
-const FREE_SHIPPING_THRESHOLD = 50;
-const STANDARD_SHIPPING_PRICE = 10;
+const FREE_SHIPPING_THRESHOLD = 4000;
+const STANDARD_SHIPPING_PRICE = 200;
 
 const roundMoney = (value) => Math.round((value + Number.EPSILON) * 100) / 100;
 
@@ -159,4 +159,21 @@ export const findOrderForUser = async ({ orderId, user }) => {
 
 export const findOrdersForUser = async (userId) => {
   return Order.find({ user: userId }).sort({ createdAt: -1 });
+};
+
+export const markOrderAsPaid = async ({ orderId, paymentResult = {} }) => {
+  if (!mongoose.Types.ObjectId.isValid(orderId)) {
+    throw new HttpError(400, 'Invalid order id');
+  }
+
+  const order = await Order.findById(orderId);
+  if (!order) {
+    throw new HttpError(404, 'Order not found');
+  }
+
+  order.isPaid = true;
+  order.paidAt = Date.now();
+  
+  const updatedOrder = await order.save();
+  return updatedOrder;
 };

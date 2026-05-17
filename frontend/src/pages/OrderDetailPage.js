@@ -2,12 +2,14 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { fetchOrderById } from '../api/orderApi';
 import { formatPrice } from '../utils/priceUtils';
+import PaymentOverlay from '../components/PaymentOverlay';
 
 export default function OrderDetailPage() {
   const { id } = useParams();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
 
   useEffect(() => {
     const loadOrder = async () => {
@@ -95,6 +97,33 @@ export default function OrderDetailPage() {
             </div>
           </div>
 
+          <div className="mt-6 rounded-3xl border border-ink-100 bg-white/70 p-5">
+            <p className="text-xs font-bold uppercase tracking-[0.16em] text-ink-500">Payment status</p>
+            {order.isPaid ? (
+              <div className="mt-3">
+                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700">
+                  Paid
+                </span>
+                <p className="mt-2 text-xs text-ink-500">
+                  Transaction completed on {new Date(order.paidAt).toLocaleDateString()}
+                </p>
+              </div>
+            ) : (
+              <div className="mt-3">
+                <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">
+                  Payment pending
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowPaymentModal(true)}
+                  className="btn-primary mt-4 w-full py-2.5 text-sm"
+                >
+                  Pay Now
+                </button>
+              </div>
+            )}
+          </div>
+
           <div className="mt-6 rounded-3xl bg-ink-900 p-5 text-white">
             <p className="text-sm font-bold text-sky-100">Ship to</p>
             <p className="mt-2 text-sm leading-6">
@@ -105,6 +134,17 @@ export default function OrderDetailPage() {
           </div>
         </aside>
       </div>
+
+      {showPaymentModal && order && (
+        <PaymentOverlay
+          order={order}
+          onClose={() => setShowPaymentModal(false)}
+          onSuccess={(paidOrder) => {
+            setOrder(paidOrder);
+            setShowPaymentModal(false);
+          }}
+        />
+      )}
     </main>
   );
 }

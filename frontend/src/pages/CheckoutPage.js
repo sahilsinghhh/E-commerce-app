@@ -4,6 +4,7 @@ import { useCart } from '../context/CartContext';
 import { createOrder } from '../api/orderApi';
 import { getProfile } from '../api/authApi';
 import { formatPrice } from '../utils/priceUtils';
+import PaymentOverlay from '../components/PaymentOverlay';
 
 export default function CheckoutPage() {
   const navigate = useNavigate();
@@ -13,6 +14,8 @@ export default function CheckoutPage() {
   const [error, setError] = useState(null);
   const [savedAddresses, setSavedAddresses] = useState([]);
   const [selectedAddressId, setSelectedAddressId] = useState('');
+  const [showPaymentModal, setShowPaymentModal] = useState(false);
+  const [createdOrder, setCreatedOrder] = useState(null);
   const shippingPrice = cartTotal > 4000 ? 0 : 200;
 
   const [shippingAddress, setShippingAddress] = useState({
@@ -93,8 +96,8 @@ export default function CheckoutPage() {
     try {
       const response = await createOrder(orderData);
       if (response.success) {
-        clearCart();
-        navigate(`/order-success/${response.data._id}`);
+        setCreatedOrder(response.data);
+        setShowPaymentModal(true);
       }
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to place order');
@@ -225,6 +228,22 @@ export default function CheckoutPage() {
           </div>
         </aside>
       </div>
+
+      {showPaymentModal && createdOrder && (
+        <PaymentOverlay
+          order={createdOrder}
+          onClose={() => {
+            setShowPaymentModal(false);
+            clearCart();
+            navigate('/orders');
+          }}
+          onSuccess={(paidOrder) => {
+            setShowPaymentModal(false);
+            clearCart();
+            navigate(`/orders/${paidOrder._id}`);
+          }}
+        />
+      )}
     </main>
   );
 }
