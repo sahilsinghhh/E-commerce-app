@@ -50,10 +50,13 @@ axiosInstance.interceptors.response.use(
         originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
         return axiosInstance(originalRequest);
       } catch (refreshError) {
-        // Refresh failed (e.g., refresh token expired)
-        console.error('Refresh token expired. Logging out...');
+        // Refresh failed (e.g., refresh token expired or invalid)
+        console.error('Refresh token invalid. Logging out...');
         setAccessToken('');
-        // Optional: window.location.href = '/login';
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('user');
+        window.dispatchEvent(new CustomEvent('auth:changed', { detail: { status: 'logout' } }));
+        window.location.href = '/login';
         return Promise.reject(refreshError);
       }
     }

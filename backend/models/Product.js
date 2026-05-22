@@ -84,4 +84,6 @@ productSchema.pre('validate', function (next) {
   next();
 });
 
+productSchema.index({ name: 'text', description: 'text' });
+
 export default mongoose.model('Product', productSchema);

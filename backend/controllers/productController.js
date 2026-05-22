@@ -31,8 +31,39 @@ const normalizeProductPayload = (body) => {
 // @access  Public
 export const getProducts = async (req, res) => {
   try {
-    const products = await Product.find().sort({ createdAt: -1 });
-    res.status(200).json({ success: true, data: products });
+    const { keyword, category, sort } = req.query;
+    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 9; // 9 items per page fits nicely in 3 columns
+    const skip = (page - 1) * limit;
+
+    let query = {};
+
+    // 1. Search Query (Uses MongoDB Text Index)
+    if (keyword) {
+      query.$text = { $search: keyword };
+    }
+
+    // 2. Category Filter (Exact match)
+    if (category && category !== 'All') {
+      query.category = category;
+    }
+
+    // 3. Sorting Logic
+    let sortObj = { createdAt: -1 }; // Default: Newest first
+    if (sort === 'price_asc') sortObj = { price: 1 };
+    if (sort === 'price_desc') sortObj = { price: -1 };
+    // If using text search, sort by text match score first for best relevance
+    if (keyword) sortObj = { score: { $meta: 'textScore' } };
+
+    const products = await Product.find(query, keyword ? { score: { $meta: 'textScore' } } : {})
+      .sort(sortObj)
+      .limit(limit)
+      .skip(skip);
+
+    const total = await Product.countDocuments(query);
+    const hasMore = skip + products.length < total;
+
+    res.status(200).json({ success: true, count: products.length, total, hasMore, data: products });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }

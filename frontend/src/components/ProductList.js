@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { fetchProducts } from '../api/productApi';
 import { useCart } from '../context/CartContext';
@@ -12,25 +12,71 @@ export default function ProductList() {
   const [searchParams] = useSearchParams();
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState(null);
-  const searchQuery = searchParams.get('search')?.trim().toLowerCase() || '';
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const observer = useRef();
+
+  const categoryFilter = searchParams.get('category') || 'All';
+  const sortFilter = searchParams.get('sort') || 'newest';
+
+  const lastProductElementRef = useCallback(
+    (node) => {
+      if (loading || loadingMore) return;
+      if (observer.current) observer.current.disconnect();
+      observer.current = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting && hasMore) {
+          setPage((prevPage) => prevPage + 1);
+        }
+      });
+      if (node) observer.current.observe(node);
+    },
+    [loading, loadingMore, hasMore]
+  );
 
   useEffect(() => {
-    loadProducts();
-  }, []);
+    setPage(1);
+    setHasMore(true);
+    setProducts([]);
+    loadProducts(1);
+  }, [searchParams]);
 
-  const loadProducts = async () => {
+  useEffect(() => {
+    if (page > 1) {
+      loadProducts(page);
+    }
+  }, [page]);
+
+  const loadProducts = async (currentPage) => {
     try {
-      setLoading(true);
-      const response = await fetchProducts();
+      if (currentPage === 1) setLoading(true);
+      else setLoadingMore(true);
+
+      const queryObj = { page: currentPage, limit: 9 };
+
+      const search = searchParams.get('search');
+      if (search) queryObj.keyword = search;
+
+      const category = searchParams.get('category');
+      if (category && category !== 'All') queryObj.category = category;
+
+      const sort = searchParams.get('sort');
+      if (sort) queryObj.sort = sort;
+
+      const response = await fetchProducts(queryObj);
       if (response.success) {
-        setProducts(response.data);
+        setProducts((prev) =>
+          currentPage === 1 ? response.data : [...prev, ...response.data]
+        );
+        setHasMore(response.hasMore);
       }
     } catch (err) {
       setError('Failed to load products');
       console.error(err);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
 
@@ -65,13 +111,19 @@ export default function ProductList() {
     );
   }
 
-  const filteredProducts = searchQuery
-    ? products.filter((product) =>
-        [product.name, product.description, product.category]
-          .filter(Boolean)
-          .some((value) => value.toLowerCase().includes(searchQuery))
-      )
-    : products;
+  const updateSearchParams = (key, value) => {
+    const current = new URLSearchParams(Array.from(searchParams.entries()));
+    if (value && value !== 'All') {
+      current.set(key, value);
+    } else {
+      current.delete(key);
+    }
+    // Update the URL without reloading the page
+    window.history.pushState(null, '', `?${current.toString()}`);
+    // Manually trigger a re-render since we are using useSearchParams
+    const event = new PopStateEvent('popstate');
+    window.dispatchEvent(event);
+  };
 
   const handleAddToCart = async (product) => {
     try {
@@ -95,73 +147,105 @@ export default function ProductList() {
         <div>
           <span className="eyebrow">Featured products</span>
           <h2 className="mt-4 font-display text-3xl font-extrabold text-ink-900 sm:text-4xl">
-            {searchQuery ? `Results for "${searchParams.get('search')}"` : 'Curated for decisive buying'}
+            {searchParams.get('search') ? `Results for "${searchParams.get('search')}"` : 'Curated for decisive buying'}
           </h2>
         </div>
-        <p className="max-w-lg text-sm leading-6 text-ink-500">
-          Clean product cards, stable image ratios, and prominent actions keep the
-          path to cart obvious on every screen.
-        </p>
+
+        {/* Filter & Sort Controls */}
+        <div className="flex gap-4">
+          <select
+            className="input-field max-w-[150px] cursor-pointer bg-white"
+            value={categoryFilter}
+            onChange={(e) => updateSearchParams('category', e.target.value)}
+          >
+            <option value="All">All Categories</option>
+            <option value="Electronics">Electronics</option>
+            <option value="Clothing">Clothing</option>
+            <option value="Home">Home</option>
+            <option value="Accessories">Accessories</option>
+          </select>
+
+          <select
+            className="input-field max-w-[150px] cursor-pointer bg-white"
+            value={sortFilter}
+            onChange={(e) => updateSearchParams('sort', e.target.value)}
+          >
+            <option value="newest">Newest First</option>
+            <option value="price_asc">Price: Low to High</option>
+            <option value="price_desc">Price: High to Low</option>
+          </select>
+        </div>
       </div>
 
-      {filteredProducts.length === 0 && (
+      {products.length === 0 && (
         <div className="premium-card rounded-[2rem] p-10 text-center">
           <p className="font-display text-3xl font-extrabold text-ink-900">No matching products</p>
           <p className="mx-auto mt-3 max-w-md text-ink-500">
-            Try a different product name, category, or description keyword.
+            Try a different category or clear your filters.
           </p>
-          <Link to="/products" className="btn-secondary mt-6">
-            Clear search
+          <Link to="/products" className="btn-secondary mt-6" onClick={() => window.location.href = '/products'}>
+            Clear filters
           </Link>
         </div>
       )}
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {filteredProducts.map((product) => (
-          <article
-            key={product._id}
-            className="group premium-card overflow-hidden rounded-[1.75rem] transition duration-300 hover:-translate-y-1 hover:shadow-glow"
-          >
-            <Link to={`/product/${product._id}`} className="block">
-              <div className="relative">
-                <ProductCardMedia product={product} />
-                <span className="absolute left-4 top-4 rounded-full border border-white/70 bg-white/85 px-3 py-1 text-xs font-bold text-ink-700 shadow-sm backdrop-blur">
-                  {product.category}
-                </span>
-              </div>
-            </Link>
+        {products.map((product, index) => {
+          const isLastElement = products.length === index + 1;
 
-            <div className="p-5">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <h3 className="font-display text-xl font-extrabold text-ink-900">
-                    {product.name}
-                  </h3>
-                  <p className="mt-2 line-clamp-2 text-sm leading-6 text-ink-500">
-                    {product.description}
-                  </p>
+          return (
+            <article
+              ref={isLastElement ? lastProductElementRef : null}
+              key={product._id}
+              className="group premium-card overflow-hidden rounded-[1.75rem] transition duration-300 hover:-translate-y-1 hover:shadow-glow"
+            >
+              <Link to={`/product/${product._id}`} className="block">
+                <div className="relative">
+                  <ProductCardMedia product={product} />
+                  <span className="absolute left-4 top-4 rounded-full border border-white/70 bg-white/85 px-3 py-1 text-xs font-bold text-ink-700 shadow-sm backdrop-blur">
+                    {product.category}
+                  </span>
                 </div>
-                <span className="rounded-2xl bg-ink-900 px-3 py-2 text-sm font-extrabold text-white">
-                  {formatPrice(product.price)}
-                </span>
-              </div>
+              </Link>
 
-              <div className="mt-5 grid grid-cols-2 gap-3">
-                <Link to={`/product/${product._id}`} className="btn-secondary py-2.5">
-                  Details
-                </Link>
-                <button
-                  type="button"
-                  className="btn-primary py-2.5"
-                  onClick={() => handleAddToCart(product)}
-                >
-                  Add
-                </button>
+              <div className="p-5">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <h3 className="font-display text-xl font-extrabold text-ink-900">
+                      {product.name}
+                    </h3>
+                    <p className="mt-2 line-clamp-2 text-sm leading-6 text-ink-500">
+                      {product.description}
+                    </p>
+                  </div>
+                  <span className="rounded-2xl bg-ink-900 px-3 py-2 text-sm font-extrabold text-white">
+                    {formatPrice(product.price)}
+                  </span>
+                </div>
+
+                <div className="mt-5 grid grid-cols-2 gap-3">
+                  <Link to={`/product/${product._id}`} className="btn-secondary py-2.5">
+                    Details
+                  </Link>
+                  <button
+                    type="button"
+                    className="btn-primary py-2.5"
+                    onClick={() => handleAddToCart(product)}
+                  >
+                    Add
+                  </button>
+                </div>
               </div>
-            </div>
-          </article>
-        ))}
+            </article>
+          );
+        })}
       </div>
+
+      {loadingMore && (
+        <div className="mt-8 flex justify-center pb-8">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-ink-200 border-t-sky-600"></div>
+        </div>
+      )}
     </div>
   );
 }

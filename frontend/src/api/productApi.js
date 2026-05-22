@@ -1,7 +1,8 @@
 import axiosInstance from './axios';
 
-export const fetchProducts = async () => {
-  const response = await axiosInstance.get('/products');
+export const fetchProducts = async (queryParams = {}) => {
+  const params = new URLSearchParams(queryParams).toString();
+  const response = await axiosInstance.get(`/products${params ? `?${params}` : ''}`);
   return response.data;
 };
 
