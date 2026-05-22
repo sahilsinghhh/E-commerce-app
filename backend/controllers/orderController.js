@@ -1,5 +1,6 @@
 import asyncHandler from '../utils/asyncHandler.js';
 import { success } from '../utils/apiResponse.js';
+import { sendOrderConfirmationEmail } from '../services/emailService.js';
 import {
   createOrderForUser,
   findOrderForUser,
@@ -16,6 +17,11 @@ export const addOrderItems = asyncHandler(async (req, res) => {
     orderItems: req.body.orderItems,
     shippingAddress: req.body.shippingAddress,
     paymentMethod: req.body.paymentMethod,
+  });
+
+  // Send order confirmation email in the background
+  sendOrderConfirmationEmail(req.user.email, order).catch((err) => {
+    console.error('Failed to send order confirmation email:', err.message);
   });
 
   success(res, order, 201);

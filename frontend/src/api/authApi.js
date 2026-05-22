@@ -51,3 +51,13 @@ export const setDefaultAddress = async (addressId) => {
   const response = await axiosInstance.patch(`/auth/me/addresses/${addressId}/default`);
   return response.data;
 };
+
+export const forgotPassword = async (email) => {
+  const response = await axiosInstance.post('/auth/forgot-password', { email });
+  return response.data;
+};
+
+export const resetPassword = async (token, password) => {
+  const response = await axiosInstance.post(`/auth/reset-password/${token}`, { password });
+  return response.data;
+};

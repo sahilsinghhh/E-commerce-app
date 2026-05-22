@@ -1,5 +1,6 @@
 import User from '../models/User.js';
 import jwt from 'jsonwebtoken';
+import { sendWelcomeEmail } from './emailService.js';
 
 export const register = async ({ name, email, password }) => {
   const userExists = await User.findOne({ email: email.toLowerCase() });
@@ -15,6 +16,11 @@ export const register = async ({ name, email, password }) => {
   // Store refresh token in DB
   user.refreshToken = refreshToken;
   await user.save();
+
+  // Send welcome email in background
+  sendWelcomeEmail(user.email, user.name).catch((err) => {
+    console.error('Failed to send welcome email:', err.message);
+  });
 
   const userObject = user.toObject();
   delete userObject.password;
