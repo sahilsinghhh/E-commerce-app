@@ -1,7 +1,9 @@
 import axios from 'axios';
 
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+
 const axiosInstance = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || 'http://localhost:5000/api',
+  baseURL: API_BASE_URL,
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
@@ -12,14 +14,25 @@ let accessToken = localStorage.getItem('accessToken') || '';
 
 export const setAccessToken = (token) => {
   accessToken = token;
+  if (token) {
+    localStorage.setItem('accessToken', token);
+  } else {
+    localStorage.removeItem('accessToken');
+  }
 };
 
 // Request interceptor: Attach token to every request
 axiosInstance.interceptors.request.use(
   (config) => {
-    if (accessToken) {
-      config.headers.Authorization = `Bearer ${accessToken}`;
+    const storedToken = localStorage.getItem('accessToken');
+    accessToken = storedToken || '';
+
+    if (storedToken) {
+      config.headers.Authorization = `Bearer ${storedToken}`;
+    } else {
+      delete config.headers.Authorization;
     }
+
     return config;
   },
   (error) => Promise.reject(error)
@@ -30,15 +43,21 @@ axiosInstance.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    const hasFrontendSession = Boolean(localStorage.getItem('accessToken'));
+    const shouldAttemptRefresh =
+      error.response?.status === 401 &&
+      !originalRequest?._retry &&
+      !originalRequest?.skipAuthRefresh &&
+      hasFrontendSession;
 
     // If the error is 401 and we haven't tried to refresh yet
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (shouldAttemptRefresh) {
       originalRequest._retry = true;
 
       try {
         // Call the refresh endpoint
         const response = await axios.post(
-          `${process.env.REACT_APP_API_URL}/auth/refresh`,
+          `${API_BASE_URL}/auth/refresh`,
           {},
           { withCredentials: true }
         );

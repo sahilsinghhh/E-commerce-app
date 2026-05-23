@@ -17,7 +17,7 @@ export const register = async (data) => {
 };
 
 export const logout = async () => {
-  const response = await axiosInstance.post('/auth/logout');
+  const response = await axiosInstance.post('/auth/logout', {}, { skipAuthRefresh: true });
   setAccessToken('');
   return response.data;
 };
