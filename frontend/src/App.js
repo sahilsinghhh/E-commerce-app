@@ -16,6 +16,18 @@ import AdminDashboard from './pages/admin/AdminDashboard';
 import ProductForm from './pages/admin/ProductForm';
 import AdminRoute from './components/auth/AdminRoute';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import Footer from './components/layout/Footer';
+
+// Info Pages
+import ReturnPolicyPage from './pages/info/ReturnPolicyPage';
+import RefundPolicyPage from './pages/info/RefundPolicyPage';
+import ShippingPolicyPage from './pages/info/ShippingPolicyPage';
+import FaqPage from './pages/info/FaqPage';
+import ProductGuidesPage from './pages/info/ProductGuidesPage';
+import WarrantyPage from './pages/info/WarrantyPage';
+import SizeGuidesPage from './pages/info/SizeGuidesPage';
+import HelpCenterPage from './pages/info/HelpCenterPage';
+
 import './styles/main.css';
 
 function App() {
@@ -96,7 +108,18 @@ function App() {
               </AdminRoute>
             }
           />
+
+          {/* Info Pages Routes */}
+          <Route path="/returns" element={<ReturnPolicyPage />} />
+          <Route path="/refunds" element={<RefundPolicyPage />} />
+          <Route path="/shipping" element={<ShippingPolicyPage />} />
+          <Route path="/faq" element={<FaqPage />} />
+          <Route path="/product-guides" element={<ProductGuidesPage />} />
+          <Route path="/warranty" element={<WarrantyPage />} />
+          <Route path="/size-guides" element={<SizeGuidesPage />} />
+          <Route path="/help" element={<HelpCenterPage />} />
         </Routes>
+        <Footer />
       </div>
     </BrowserRouter>
   );
