@@ -70,7 +70,7 @@ export const sendPasswordResetEmail = async (userEmail, resetUrl) => {
 export const sendOrderConfirmationEmail = async (userEmail, order) => {
   const itemsList = order.orderItems.map(item => `
     <li style="padding: 10px 0; border-bottom: 1px solid #eee; font-size: 15px; color: #333;">
-      <strong>${item.product ? item.product.name : 'Product'}</strong> (x${item.quantity}) - $${item.price.toFixed(2)}
+      <strong>${item.name || 'Product'}</strong> (x${item.quantity}) - $${item.price.toFixed(2)}
     </li>
   `).join('');
 

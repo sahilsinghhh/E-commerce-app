@@ -11,6 +11,8 @@ import orderRoutes from './routes/orderRoutes.js';
 import uploadRoutes from './routes/uploadRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import errorHandler from './middlewares/errorHandler.js';
+import morgan from 'morgan';
+import logger from './utils/logger.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -18,6 +20,22 @@ const __dirname = path.dirname(__filename);
 const app = express();
 
 // Middleware
+morgan.token('user', (req) => {
+  if (req.user && req.user._id) {
+    return `[User: ${req.user._id}]`;
+  }
+  return '[Guest]';
+});
+
+const morganFormat = process.env.NODE_ENV === 'production' 
+  ? ':user :remote-addr - :remote-user [:date[clf]] ":method :url HTTP/:http-version" :status :res[content-length] ":referrer" ":user-agent"'
+  : ':user :method :url :status :response-time ms - :res[content-length]';
+
+app.use(morgan(morganFormat, {
+  stream: {
+    write: (message) => logger.info(message.trim())
+  }
+}));
 app.use(cors({ origin: true, credentials: true }));
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
